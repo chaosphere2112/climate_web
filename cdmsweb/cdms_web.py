@@ -81,7 +81,8 @@ def var_axis(fname, var_id, axis):
     if axis not in v.getAxisIds():
         abort(404)
 
-    a = v.getAxis(v.getAxisIndex(a))
+    index = v.getAxisIndex(axis)
+    axis = v.getAxis(index)
 
     axis_desc = {}
     bounds = axis.getBounds()
@@ -89,12 +90,25 @@ def var_axis(fname, var_id, axis):
         axis_desc["bounds"] = bounds.tolist()
 
     values = axis.getData().tolist()
+    axis_desc["id"] = axis.id
+    axis_desc["index"] = index
     axis_desc["data"] = values
     axis_desc["attributes"] = {}
-    for attr, value in a.attributes().iteritems():
+    for attr, value in axis.attributes.iteritems():
         if isinstance(value, numpy.ndarray):
             value = value.tolist()
         axis_desc["attributes"][attr] = value
+    if axis.isLatitude():
+        axis_desc["type"] = "latitude"
+    elif axis.isLongitude():
+        axis_desc["type"] = "longitude"
+    elif axis.isTime():
+        axis_desc["type"] = "time"
+    elif axis.isLevel():
+        axis_desc["type"] = "level"
+    else:
+        axis_desc["type"] = None
+    axis_desc["length"] = len(values)
     f.close()
     return jsonify(axis_desc)
 
@@ -126,14 +140,13 @@ def var(fname, var_id):
             if len(values) == 1:
                 values = values[0]
             axis_args[arg] = values
-            print values
     transient = v(squeeze=True, **axis_args)
     flat = transient.flatten()
     data_type = flat.dtype
     shape = transient.shape
     resp = Response(response=flat.tobytes(), status=200)
     resp.headers["x-cdms-datatype"] = data_type.name
-    resp.headers["x-cdms-shape"] = shape
+    resp.headers["x-cdms-shape"] = ",".join([str(s) for s in shape])
     return resp
 
 

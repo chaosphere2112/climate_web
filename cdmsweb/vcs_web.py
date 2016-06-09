@@ -1,24 +1,66 @@
 from flask import Blueprint, jsonify, abort, url_for, request, g, Response
 import vcs
-import tempfile
+import os
 
 
 vcsweb = Blueprint("vcs", __name__)
 
 
-def named(base_route):
+def named(base_route, default="default"):
     route = base_route + "/<name>"
-    defaults = {"name": "default"}
+    defaults = {"name": default}
 
     def dec(func):
         return vcsweb.route(base_route, defaults=defaults)(vcsweb.route(route)(func))
     return dec
 
 
+@named("/continents", default="data_continent_fine")
+def continents(name):
+    fnm = os.path.join(vcs.prefix, "share", "vcs", name)
+
+    f = open(fnm)
+    ln = f.readline()
+
+    lines = []
+    while ln.strip().split() != ["-99", "-99"]:
+        pts = []
+        # Many lines, need to know number of points
+        N = int(ln.split()[0])
+        # Now create and store these points
+        n = 0
+        while n < N:
+            ln = f.readline()
+            sp = ln.split()
+            sn = len(sp)
+            didIt = False
+            if sn % 2 == 0:
+                try:
+                    spts = []
+                    for i in range(sn / 2):
+                        l, L = float(sp[i * 2]), float(sp[i * 2 + 1])
+                        spts.append([l, L])
+                    for p in spts:
+                        pts.append([p[1], p[0]])
+                    n += sn
+                    didIt = True
+                except:
+                    didIt = False
+            if didIt is False:
+                while len(ln) > 2:
+                    l, L = float(ln[:8]), float(ln[8:16])
+                    pts.append([L, l])
+                    ln = ln[16:]
+                    n += 2
+        lines.append(pts)
+        ln = f.readline()
+    return jsonify(lines)
+
+
 @named("/boxfill")
 def boxfill(name):
     try:
-        box = vcs.getboxfill(name)
+        box = vcs.getboxfill(str(name))
     except:
         abort(404)
     box_dict, _ = vcs.utils.dumpToDict(box)
@@ -26,6 +68,14 @@ def boxfill(name):
     for k, v in box_dict.iteritems():
         if v == 1e20:
             v = None
+        if isinstance(v, (list, tuple)):
+            new_v = []
+            for val in v:
+                if val == 1e20:
+                    new_v.append(None)
+                else:
+                    new_v.append(val)
+            v = new_v
         box[k] = v
     return jsonify(box)
 
@@ -50,7 +100,7 @@ def get_colors():
 @named("/colormap")
 def colormap(name):
     try:
-        cmap = vcs.getcolormap(name)
+        cmap = vcs.getcolormap(str(name))
     except:
         abort(404)
     cmap_dict, _ = vcs.utils.dumpToDict(cmap)
@@ -60,7 +110,7 @@ def colormap(name):
 @named("/isofill")
 def isofill(name):
     try:
-        iso = vcs.getisofill(name)
+        iso = vcs.getisofill(str(name))
     except:
         abort(404)
     return jsonify(vcs.utils.dumpToDict(iso)[0])
@@ -69,7 +119,7 @@ def isofill(name):
 @named("/isoline")
 def isoline(name):
     try:
-        gm = vcs.getisoline(name)
+        gm = vcs.getisoline(str(name))
     except:
         abort(404)
     return jsonify(vcs.utils.dumpToDict(gm)[0])
@@ -78,7 +128,7 @@ def isoline(name):
 @named("/marker")
 def marker(name):
     try:
-        gm = vcs.getmarker(name)
+        gm = vcs.getmarker(str(name))
     except:
         abort(404)
     return jsonify(vcs.utils.dumpToDict(gm)[0])
@@ -87,7 +137,7 @@ def marker(name):
 @named("/vector")
 def vector(name):
     try:
-        gm = vcs.getvector(name)
+        gm = vcs.getvector(str(name))
     except:
         abort(404)
     return jsonify(vcs.utils.dumpToDict(gm)[0])
@@ -96,7 +146,7 @@ def vector(name):
 @named("/meshfill")
 def meshfill(name):
     try:
-        gm = vcs.getmeshfill(name)
+        gm = vcs.getmeshfill(str(name))
     except:
         abort(404)
     return jsonify(vcs.utils.dumpToDict(gm)[0])
@@ -105,7 +155,7 @@ def meshfill(name):
 @named("/projection")
 def projection(name):
     try:
-        obj = vcs.getprojection(name)
+        obj = vcs.getprojection(str(name))
     except:
         abort(404)
     return jsonify(vcs.utils.dumpToDict(obj)[0])
@@ -114,7 +164,7 @@ def projection(name):
 @named("/texttable")
 def texttable(name):
     try:
-        obj = vcs.gettexttable(name)
+        obj = vcs.gettexttable(str(name))
     except:
         abort(404)
     return jsonify(vcs.utils.dumpToDict(obj)[0])
@@ -123,7 +173,7 @@ def texttable(name):
 @named("/textorientation")
 def textorientation(name):
     try:
-        obj = vcs.gettextorientation(name)
+        obj = vcs.gettextorientation(str(name))
     except:
         abort(404)
     return jsonify(vcs.utils.dumpToDict(obj)[0])
@@ -132,7 +182,7 @@ def textorientation(name):
 @named("/textcombined")
 def textcombined(name):
     try:
-        obj = vcs.gettextcombined(name)
+        obj = vcs.gettextcombined(str(name))
     except:
         abort(404)
     return jsonify(vcs.utils.dumpToDict(obj)[0])
@@ -141,7 +191,7 @@ def textcombined(name):
 @named("/line")
 def line(name):
     try:
-        obj = vcs.getline(name)
+        obj = vcs.getline(str(name))
     except:
         abort(404)
     return jsonify(vcs.utils.dumpToDict(obj)[0])
@@ -150,7 +200,7 @@ def line(name):
 @named("/fillarea")
 def fillarea(name):
     try:
-        obj = vcs.getfillarea(name)
+        obj = vcs.getfillarea(str(name))
     except:
         abort(404)
     return jsonify(vcs.utils.dumpToDict(obj)[0])
@@ -159,7 +209,7 @@ def fillarea(name):
 @named("/font")
 def font(name):
     try:
-        obj = vcs.getfont(name)
+        obj = vcs.getfont(str(name))
     except:
         abort(404)
     return jsonify(vcs.utils.dumpToDict(obj)[0])
@@ -168,7 +218,7 @@ def font(name):
 @named("/3d_scalar")
 def scalar_3d(name):
     try:
-        obj = vcs.get3d_scalar(name)
+        obj = vcs.get3d_scalar(str(name))
     except:
         abort(404)
     return jsonify(vcs.utils.dumpToDict(obj)[0])
@@ -177,7 +227,7 @@ def scalar_3d(name):
 @named("/3d_dual_scalar")
 def dual_scalar_3d(name):
     try:
-        obj = vcs.get3d_dual_scalar(name)
+        obj = vcs.get3d_dual_scalar(str(name))
     except:
         abort(404)
     return jsonify(vcs.utils.dumpToDict(obj)[0])
@@ -186,7 +236,7 @@ def dual_scalar_3d(name):
 @named("/3d_vector")
 def vector_3d(name):
     try:
-        obj = vcs.get3d_vector(name)
+        obj = vcs.get3d_vector(str(name))
     except:
         abort(404)
     return jsonify(vcs.utils.dumpToDict(obj)[0])
@@ -195,7 +245,7 @@ def vector_3d(name):
 @named("/template")
 def template(name):
     try:
-        obj = vcs.gettemplate(name)
+        obj = vcs.gettemplate(str(name))
     except:
         abort(404)
     return jsonify(vcs.utils.dumpToDict(obj)[0])
@@ -204,7 +254,7 @@ def template(name):
 @named("/taylordiagram")
 def taylordiagram(name):
     try:
-        obj = vcs.gettaylordiagram(name)
+        obj = vcs.gettaylordiagram(str(name))
     except:
         abort(404)
     return jsonify(vcs.utils.dumpToDict(obj)[0])
@@ -213,14 +263,17 @@ def taylordiagram(name):
 @named("/1d")
 def oned(name):
     try:
-        obj = vcs.get1d(name)
+        obj = vcs.get1d(str(name))
     except:
         abort(404)
     return jsonify(vcs.utils.dumpToDict(obj)[0])
 
 
+def serve_vcs(app):
+    app.register_blueprint(vcsweb, url_prefix="/vcs")
+
 if __name__ == "__main__":
     from flask import Flask
     app = Flask(__name__)
-    app.register_blueprint(vcsweb, url_prefix="/vcs")
+    serve_vcs(app)
     app.run()

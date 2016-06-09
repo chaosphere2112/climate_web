@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<script src="https://d3js.org/d3.v3.js" charset="utf-8"></script>
+        <script src="https://d3js.org/d3.geo.projection.v0.min.js" charset="utf-8"></script>
+        <script src="/static/utils.js"></script>
+        <script src="/static/vcs.js"></script>
+        <script src="/static/cdms.js"></script>
+        <script src="/static/boxfill.js"></script>
+        <link rel="stylesheet" type="text/css" href="/static/vcs.css">
+	</head>
+	<body>
+		<canvas id="canvas"></canvas>
+		<canvas id="continents"></canvas>
+	<script>
+		var data_url = '{{data_url}}';
+		var variable = new cdms.Variable(data_url);
+		variable.ready.then(function(d){
+			boxfill(variable, "{{boxfill_name}}");
+		});
+	</script>
+	</body>
+</html>
